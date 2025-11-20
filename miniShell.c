@@ -1,128 +1,125 @@
-/*
- * This is a very minimal shell. It finds an executable in the
- * PATH, then loads it and executes it (using execv). Since
- * it uses "." (dot) as a seperator, it cannot handle file
- * names like "minishell.h"
- * 
- * The focus on this exercise is to use fork, PATH variables,
- * and execv. This code can be extended by doing the exercise at
- * the end of Chapter 9.
- */
-
 #include "miniShell.h"
-
-char *lookupPath(char **, char **);
-int parseCommand(char *, struct command_t *);
-int parsePath(char **);
-void printPrompt();
-void readCommand(char *);
-...
-
-int main() 
-{
-    /* Shell initialization */
-    printf("Welcome to miniShell!\n");
-    ...
-    parsePath(pathv); /* Get directory paths from PATH */
-
-    while (true)
-    {
-        printPrompt(); /* Display prompt */
-
-        /* Read the command line and parse it */
-        readCommand(commandLine);
-        ...
-        parseCommand(commandLine, &command);
-        ...
-
-        /* Get the full pathname for the file */
-        command.name = lookupPath(command.argv, pathv);
-        if (command.name == NULL)
-        {
-            /* Report error */
-            continue;
-        }
-
-        /* Create child and execute the command */
-        ...
-
-        /* Wait for the child to terminate */
-        ...
-    }
-    
-    /* Shell termination */
-    return EXIT_SUCCESS;
-    
-}
 
 void printPrompt()
 {
-	/* build the prompt string to have the machine name,
-	 * current directory, or other desired information
- 	 */
-	 promptString = ...;
-	 printf("%s ", promptString);
+    printf("miniShell> ");
 }
 
-void readCommand(char *buffer)
+void readCommand(char *commandLine)
 {
-	/* This code uses any set of I/O functions, such as those in
-	 * the stdio library to read the entire command line into
-	 * the buffer. This implementation is greatly simplified,
-	 * but it does the job.
-	 */
-	gets(buffer);
+    printPrompt();
+    fgets(commandLine, MAX_LINE_LEN, stdin);
+    size_t len = strlen(commandLine);
+    if (len > 0 && commandLine[len - 1] == '\n')
+    {
+        commandLine[len - 1] = '\0';
+    }
+
+    // TODO: REMOVE PRINT STATEMENT
+    printf("Command Entered: %s\n", commandLine);
+}
+
+int parseCommand(char *cLine, Command *cmd)
+{
+    int argc;
+    char **clPtr;
+
+    // Initialization
+    clPtr = &cLine;
+    argc = 0;
+    cmd->argv[argc] = (char *)malloc(MAX_ARG_LEN);
+
+    // Fill argv[]
+    while ((cmd->argv[argc] = strsep(clPtr, WHITESPACE)) != NULL)
+    {
+        cmd->argv[++argc] = (char *)malloc(MAX_ARG_LEN);
+    }
+
+    // Set command name and argc
+    cmd->argc = argc - 1;
+    cmd->name = (char *)malloc(MAX_ARG_LEN);
+    strcpy(cmd->name, cmd->argv[0]);
+
+    return 1;
 }
 
 int parsePath(char *dirs[])
 {
-	/* This function reads the PATH variable for this 
-	 * environment, then builds an array, dirs[], of the
- 	 * directories in PATH
-	 */
-	  char *pathEnvVar;
-	  char *thePath;
-	
-	  for(int i = 0; i < MAX_ARGS; i++)
-	  {
-		dirs[i] = NULL;
-	  }
+    /*
+     * This function reads the PATH variable for this environment,
+     *then builds an array, dirs[], of the directories in PATH.
+     */
 
-	  pathEnvVar = (char *) getenv("PATH");
-	  thePath = (char *) malloc(strlen(pathEnvVar) + 1);
-	  strcpy(thePath, pathEnvVar);
+    char *pathEnvVar;
+    char *thePath;
 
-	/* Loop to parse thePath. Look for a ':'
-	 * delimiter between each path name.
-	 */
+    // builds the dirs[] array with NULL values
+    int i;
+    for (i = 0; i < MAX_PATHS; i++)
+    {
+        dirs[i] = NULL;
+    }
 
-	  ...
+    // Get the PATH environment variable
+    pathEnvVar = (char *)getenv("PATH");
+
+    // Allocate space for copying PATH string
+    thePath = (char *)malloc(strlen(pathEnvVar) + 1);
+    // Copy PATH string
+    strcpy(thePath, pathEnvVar);
+
+    // Parse thePath into dirs[] using ':' as the delimiter
+    char *token = strtok(thePath, ":");
+    i = 0; // reset index for dirs[]
+    while (token != NULL && i < MAX_PATHS)
+    {
+        // Need to allocate space for each potential path
+        dirs[i] = (char *)malloc(strlen(token) + 1);
+        strcpy(dirs[i], token);
+        token = strtok(NULL, ":");
+        i++;
+    }
+
+    // Free allocated memory for thePath
+    free(thePath);
 }
 
 char *lookupPath(char **argv, char **dir)
 {
-	/* This function searches the directories identified by the dir
-	 * argument to see if argv[0] (the file name) appears there.
-	 * Allocate a new string, place the full path name in it, then
-	 * return the string.
-	 */
-	  char *result;
-	  char pName[MAX_PATH_LEN];
+    // TODO: Implement lookupPath function
+}
 
-	// Check to see if fire name is already an absolute path name
-	  if (*argv[0] == '/')
-	  {
-		...
-	  }
+int main()
+{
+    int pid;
+    char commandLine[MAX_LINE_LEN];
+    char *pathv[MAX_PATH_LEN];
+    Command command;
 
-	// Look in PATH directories
-	// Use access() to see if the file is in a dir.
-	  for (int i = 0; i < MAX_PATHS; i++)
-	  {
-		...
-	  }
+    // Parse PATH variable into dirs[]
+    parsePath(pathv);
 
-	// File name not found in any path variable
-	  fprintf(stderr, "%s: command not found\n", argv[0]);
-	  return NULL;
+    // Execution loop
+    while (1)
+    {
+        // Read command line
+        readCommand(commandLine);
+
+        // Parse out command and arguments
+        parseCommand(commandLine, &command);
+
+        // check in path for command name
+        command.name = lookupPath(command.argv, pathv);
+        // if command is blank report and continue
+        if (command.name == NULL)
+        {
+            printf("Command not found\n");
+            continue;
+        }
+
+        // TODO: create child process
+    }
+
+    // Success
+    return 0;
 }
